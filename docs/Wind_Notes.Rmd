@@ -1,0 +1,45 @@
+---
+title: "Wind Notes"
+author: "Kimberly Bastille"
+date: "3/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+image.dir<- here::here("docs/plots")
+```
+
+### Request
+
+Calculate winds parallel and perpendicular to shore. 
+
+### Background
+
+Wind data available at [NOAA PSL](https://downloads.psl.noaa.gov/Datasets/NARR/Dailies/monolevel/). It comes in two forms 'U-wind' and 'V-wind'. u-wind is positive for a west to east flow (eastward wind) or perpendicular to the coastline and the V-wind is positive for south to north flow (northward wind) or parallel to the coastline. 
+
+### Action
+
+1) Downloaded test dataset (uwind 2021, vwind 2021) from NOAA PSL.
+2) Mask to bluefish polygon
+3) Extract max wind for that day
+4) Plot X = day of year, y = mean wind direction. 
+
+### Draft Plots
+
+```{r, echo=FALSE}
+
+knitr::include_graphics(file.path(image.dir, "uwind2021.png"))
+
+```
+
+Negative values indicate wind blowing onto coast. 
+
+```{r, echo = FALSE}
+
+knitr::include_graphics(file.path(image.dir, "vwind2021.png"))
+
+```
+
+Wind blows toward the south in the first part of the year then more mixed in second half of the year.
