@@ -9,6 +9,23 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 image.dir<- here::here("docs/plots")
+
+
+library(dplyr)
+library(raster)
+library(sf)
+library(ggplot2)
+library(ncdf4)
+library(reshape2)
+library(ecodata)
+library(stringr)
+
+
+raw.dir <- here::here("data-raw")
+
+esp <- ecodata::ESP_sf
+
+
 ```
 
 ### Request
@@ -25,21 +42,198 @@ Wind data available at [NOAA PSL](https://downloads.psl.noaa.gov/Datasets/NARR/D
 2) Mask to bluefish polygon
 3) Extract max wind for that day
 4) Plot X = day of year, y = mean wind direction. 
+5) Repeat for month mean data
+6) Calculate mean seasonal for each year (1:3 = winter, etc.)
 
-### Draft Plots
+### Draft Plots {.tabset .tabset-fade}
 
-```{r, echo=FALSE}
+#### Daily for 2021
 
-knitr::include_graphics(file.path(image.dir, "uwind2021.png"))
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+wind_nc <-"vwnd.10m.2021.nc"
+#
+#Get anomaly calculation
+w1 <- raster::stack(file.path(raw.dir,wind_nc))
+w1 <- raster::crop(w1, extent(280,300,30,50))
+w1 <- raster::rotate(w1)
+crs(w1) <- "+proj=longlat +lat_1=35 +lat_2=45 +lat_0=40 +lon_0=-77 +x_0=0 +y_0=0 +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+#
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:nlayers(w1)){
+  names <- w1[[i]]@data@names
+  values<- w1[[i]]@data@max
+  dat<-cbind(names,values)
+  df<-rbind(df, dat)
+  }
+
+wind_out<- df %>% dplyr::mutate(Var = "vwind",
+                                Year = stringr::str_extract(names, pattern = "\\d{4}"), 
+                                names = stringr::str_remove(names, pattern = "X"), 
+                                DOY = lubridate::as_date(names), 
+                                values = as.numeric(values))
+
+wind_out %>% 
+  ggplot2::ggplot(aes(x= DOY, y = values))+
+  ggplot2::geom_point()+
+  ggplot2::ggtitle("V wind")+
+  ggplot2::ylab("south to north wind")
+
 
 ```
 
-Negative values indicate wind blowing onto coast. 
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
 
-knitr::include_graphics(file.path(image.dir, "vwind2021.png"))
+wind_nc <-"uwnd.10m.2021.nc"
+#
+#Get anomaly calculation
+w1 <- raster::stack(file.path(raw.dir,wind_nc))
+w1 <- raster::crop(w1, extent(280,300,30,50))
+w1 <- raster::rotate(w1)
+crs(w1) <- "+proj=longlat +lat_1=35 +lat_2=45 +lat_0=40 +lon_0=-77 +x_0=0 +y_0=0 +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+#
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:nlayers(w1)){
+  names <- w1[[i]]@data@names
+  values<- w1[[i]]@data@max
+  dat<-cbind(names,values)
+  df<-rbind(df, dat)
+  }
+
+wind_out<- df %>% dplyr::mutate(Var = "uwind",
+                                Year = stringr::str_extract(names, pattern = "\\d{4}"), 
+                                names = stringr::str_remove(names, pattern = "X"), 
+                                DOY = lubridate::as_date(names), 
+                                values = as.numeric(values))
+
+wind_out %>% 
+  ggplot2::ggplot(aes(x= DOY, y = values))+
+  ggplot2::geom_point()+
+  ggplot2::ggtitle("U wind")+
+  ggplot2::ylab("west to east wind")
+
 
 ```
 
-Wind blows toward the south in the first part of the year then more mixed in second half of the year.
+
+
+#### Monthly/Seasonal Plots
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+
+wind_nc <-"vwnd.10m.mon.mean.nc"
+
+
+w1 <- raster::stack(file.path(raw.dir,wind_nc))
+w1 <- raster::crop(w1, extent(280,300,30,50))
+w1 <- raster::rotate(w1)
+crs(w1) <- "+proj=longlat +lat_1=35 +lat_2=45 +lat_0=40 +lon_0=-77 +x_0=0 +y_0=0 +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+#
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:nlayers(w1)){
+  names <- w1[[i]]@data@names
+  values<- w1[[i]]@data@max
+  dat<-cbind(names,values)
+  df<-rbind(df, dat)
+}
+
+wind_out<- df %>% dplyr::mutate(Var = "vwind",
+                                Year = stringr::str_extract(names, pattern = "\\d{4}"), 
+                                names = stringr::str_remove(names, pattern = "X"), 
+                                DOY = lubridate::as_date(names), 
+                                values = as.numeric(values), 
+                                month = lubridate::month(DOY))
+
+wind_out %>% 
+  ggplot2::ggplot(aes(x= DOY, y = values))+
+  ggplot2::geom_point()+
+  ggplot2::ggtitle("V wind")+
+  ggplot2::ylab("south to north wind")+
+  ggplot2::facet_wrap(~month)+
+  ecodata::geom_gls()
+
+### Seasonal
+season_wind_out<- wind_out %>% 
+  dplyr::mutate(season = dplyr::recode(month, 
+                              "1" = "Winter",  "2" = "Winter",  "3" = "Winter", 
+                              "4" = "Spring",  "5" = "Spring",  "6" = "Spring", 
+                              "7" = "Summer",  "8" = "Summer",  "9" = "Summer", 
+                              "10" = "Fall",  "11" = "Fall",   "12" = "Fall")) %>% 
+  group_by(season, Year) %>% 
+  summarise(values = mean(values)) %>% 
+  mutate(Year = as.numeric(Year))
+
+
+season_wind_out %>% 
+  ggplot2::ggplot(aes(x= Year, y = values))+
+  ggplot2::geom_point()+
+  ggplot2::ggtitle("V wind")+
+  ggplot2::ylab("south to north wind")+
+  ggplot2::facet_wrap(~season)+
+  ecodata::geom_gls()
+
+```
+
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+
+wind_nc <-"uwnd.10m.mon.mean.nc"
+
+
+w1 <- raster::stack(file.path(raw.dir,wind_nc))
+w1 <- raster::crop(w1, extent(280,300,30,50))
+w1 <- raster::rotate(w1)
+crs(w1) <- "+proj=longlat +lat_1=35 +lat_2=45 +lat_0=40 +lon_0=-77 +x_0=0 +y_0=0 +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+#
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:nlayers(w1)){
+  names <- w1[[i]]@data@names
+  values<- w1[[i]]@data@max
+  dat<-cbind(names,values)
+  df<-rbind(df, dat)
+}
+
+wind_out<- df %>% dplyr::mutate(Var = "uwind",
+                                Year = stringr::str_extract(names, pattern = "\\d{4}"), 
+                                names = stringr::str_remove(names, pattern = "X"), 
+                                DOY = lubridate::as_date(names), 
+                                values = as.numeric(values), 
+                                month = lubridate::month(DOY))
+
+wind_out %>% 
+  ggplot2::ggplot(aes(x= DOY, y = values))+
+  ggplot2::geom_point()+
+  ggplot2::ggtitle("U wind")+
+  ggplot2::ylab("west to east wind")+
+  ggplot2::facet_wrap(~month)+
+  ecodata::geom_gls()
+
+### Seasonal
+season_wind_out<- wind_out %>% 
+  dplyr::mutate(season = dplyr::recode(month, 
+                              "1" = "Winter",  "2" = "Winter",  "3" = "Winter", 
+                              "4" = "Spring",  "5" = "Spring",  "6" = "Spring", 
+                              "7" = "Summer",  "8" = "Summer",  "9" = "Summer", 
+                              "10" = "Fall",  "11" = "Fall",   "12" = "Fall")) %>% 
+  group_by(season, Year) %>% 
+  summarise(values = mean(values)) %>% 
+  mutate(Year = as.numeric(Year))
+
+
+season_wind_out %>% 
+  ggplot2::ggplot(aes(x= Year, y = values))+
+  ggplot2::geom_point()+
+  ggplot2::ggtitle("U wind")+
+  ggplot2::ylab("west to east wind")+
+  ggplot2::facet_wrap(~season)+
+  ecodata::geom_gls()
+
+```
+
+
