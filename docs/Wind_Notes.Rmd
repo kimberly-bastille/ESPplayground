@@ -28,15 +28,41 @@ esp <- ecodata::ESP_sf
 
 ```
 
-### Request
+## Request
 
 Calculate winds parallel and perpendicular to shore. 
 
-### Background
+## Background
 
 Wind data available at [NOAA PSL](https://downloads.psl.noaa.gov/Datasets/NARR/Dailies/monolevel/). It comes in two forms 'U-wind' and 'V-wind'. u-wind is positive for a west to east flow (eastward wind) or perpendicular to the coastline and the V-wind is positive for south to north flow (northward wind) or parallel to the coastline. 
 
-### Action
+## Action {.tabset .tabset-fade}
+
+### Wind Indicator
+
+1) Downloaded monthly mean dataset (uwind, vwind) from NOAA PSL.
+2) Mask to bluefish polygon
+3) Extract max wind for that day
+4) calculate hypotenuse and angle for each month
+
+#### Theory 
+```{r, echo = FALSE}
+knitr::include_graphics(c(file.path(here::here("docs/plots/ESP_math.PNG"))))
+```
+
+#### Dataset
+
+```{r, echo=FALSE}
+wind_table<-read.csv(file.path(here::here("data-raw/ESP_wind.csv"))) %>% 
+  dplyr::select(-X)
+
+DT::datatable(wind_table)
+
+```
+
+
+
+### Initial Exploration Plots {.tabset .tabset-fade}
 
 1) Downloaded test dataset (uwind 2021, vwind 2021) from NOAA PSL.
 2) Mask to bluefish polygon
@@ -44,8 +70,6 @@ Wind data available at [NOAA PSL](https://downloads.psl.noaa.gov/Datasets/NARR/D
 4) Plot X = day of year, y = mean wind direction. 
 5) Repeat for month mean data
 6) Calculate mean seasonal for each year (1:3 = winter, etc.)
-
-### Draft Plots {.tabset .tabset-fade}
 
 #### Daily for 2021
 
@@ -235,5 +259,4 @@ season_wind_out %>%
   ecodata::geom_gls()
 
 ```
-
 
