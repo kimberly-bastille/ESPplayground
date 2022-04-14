@@ -1,0 +1,181 @@
+---
+title: "Bluefish wind analysis"
+author: "Abigail Tyrell"
+date: "`r format(Sys.time(), '%d %b %Y')`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+`%>%` <- magrittr::`%>%`
+```
+
+# Downloaded monthly mean dataset (uwind, vwind) from NOAA PSL
+Located in `data-raw` folder.
+
+# Determine relevant strata
+
+## What polygons to use?
+
+Entire east coast:
+```{r}
+# setup
+xmin <- -80
+xmax <- -65
+ymin <- 30
+ymax <- 45
+xlims <- c(xmin, xmax)
+ylims <- c(ymin, ymax)
+crs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+ne_countries <- rnaturalearth::ne_countries(
+  scale = 10,
+  continent = "North America",
+  returnclass = "sf"
+) %>%
+  sf::st_transform()
+ne_states <- rnaturalearth::ne_states(
+  country = "united states of america",
+  returnclass = "sf"
+) %>% sf::st_transform()
+
+
+# strata
+strata <- NEesp::latlong %>%
+  dplyr::select(strata) %>%
+  dplyr::distinct() %>%
+  dplyr::rename(STRATA = strata)
+
+new_shape <- NEesp::shape %>%
+  dplyr::select(STRATA, geometry) %>%
+  sf::st_transform()
+sf::st_crs(new_shape) <- crs
+
+strata_plot <- dplyr::full_join(new_shape, strata)
+
+# plot
+p1 <- ggplot2::ggplot() +
+  ggplot2::geom_sf(
+    data = new_shape, # all survey strata
+    # fill = "aliceblue",
+    ggplot2::aes(fill = STRATA),
+    alpha = 0.9, 
+    size = 0.01, 
+    color = "grey30"
+  ) +
+  # ggplot2::geom_sf(data = strata_plot,
+  #     size = 0.05, color = "grey30") +
+  ggplot2::geom_sf(
+    data = ne_countries,
+    color = "grey60", 
+    size = 0.25
+  ) +
+  ggplot2::geom_sf(
+    data = ne_states,
+    color = "grey60", 
+    size = 0.05
+  ) +
+  viridis::scale_fill_viridis(discrete = FALSE) +
+  ggplot2::coord_sf(crs = crs, 
+                    xlim = xlims, 
+                    ylim = ylims) +
+  ggthemes::theme_map() +
+  ggplot2::theme(legend.direction = "horizontal")
+print(p1)
+```
+
+Inshore (ish) strata:
+```{r}
+p1 <- ggplot2::ggplot() +
+  ggplot2::geom_sf(
+    data = new_shape, # all survey strata
+    fill = "aliceblue",
+    #  ggplot2::aes(fill = STRATA),
+    alpha = 0.9, 
+    size = 0.01, 
+    color = "grey30"
+  ) +
+  ggplot2::geom_sf(
+    data = new_shape %>%
+      dplyr::filter(STRATA > 2000 & STRATA < 8000),
+    fill = "maroon",
+    size = 0.05, 
+    color = "grey30"
+  ) +
+  ggplot2::geom_sf(
+    data = ne_countries,
+    color = "grey60",
+    size = 0.25
+  ) +
+  ggplot2::geom_sf(
+    data = ne_states,
+    color = "grey60", 
+    size = 0.05
+  ) +
+  viridis::scale_fill_viridis(discrete = FALSE) +
+  ggplot2::coord_sf(crs = crs, 
+                    xlim = xlims, 
+                    ylim = ylims) +
+  ggthemes::theme_map()
+print(p1)
+```
+
+# Extract max wind by day
+
+## Read in wind data
+```{r, echo = TRUE}
+vwind <- raster::stack(here::here("data-raw/vwnd.10m.2021.nc"))
+```
+```{r, echo = TRUE}
+#vwind <- raster::crop(vwind, extent(280,300,30,50)) 
+# does not run in Rmarkdown???
+```
+```{r, echo = TRUE}
+vwind <- raster::rotate(vwind)
+```
+```{r, echo = TRUE}
+raster::crs(vwind) <- "+proj=longlat +lat_1=35 +lat_2=45 +lat_0=40 +lon_0=-77 +x_0=0 +y_0=0 +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+```
+
+## Mask to relevant strata
+```{r, echo = TRUE}
+## not sure why this mask isn't working??
+m_vwind <- raster::mask(vwind, new_shape[new_shape$STRATA > 2000 & new_shape$STRATA < 8000,2])
+mean(m_vwind@data@values, na.rm = TRUE)
+m_vwind[[1]]
+#
+# uwind <- here::here("data-raw/uwnd.10m.2021.nc") %>%
+#   raster::stack()
+
+# something is wrong here
+vwind[[1]]
+
+# vwind_mask <- raster::mask(vwind, new_shape[new_shape$STRATA > 2000 & new_shape$STRATA < 8000,])
+# vwind_mean <- mean(vwind_mask@data@values, na.rm = TRUE)
+
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:raster::nlayers(vwind)){
+  names <- vwind[[i]]@data@names
+  values<- vwind[[i]]@data@max
+  dat<-cbind(names,values)
+  df<-rbind(df, dat)
+  }
+head(df)
+```
+
+## Calculate mean u and v wind
+
+# Calculate hypotenuse and angle by month (or week?)
+
+# Calculate cross shore and long shore winds
