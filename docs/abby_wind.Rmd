@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 `%>%` <- magrittr::`%>%`
 ```
 
-# Downloaded monthly mean dataset (uwind, vwind) from NOAA PSL
+# Downloaded daily mean dataset (uwind, vwind) from NOAA PSL
 Located in `data-raw` folder.
 
 # Determine relevant strata
@@ -37,12 +37,14 @@ ymax <- 45
 xlims <- c(xmin, xmax)
 ylims <- c(ymin, ymax)
 crs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
 ne_countries <- rnaturalearth::ne_countries(
   scale = 10,
   continent = "North America",
   returnclass = "sf"
 ) %>%
   sf::st_transform()
+
 ne_states <- rnaturalearth::ne_states(
   country = "united states of america",
   returnclass = "sf"
@@ -57,8 +59,8 @@ strata <- NEesp::latlong %>%
 
 new_shape <- NEesp::shape %>%
   dplyr::select(STRATA, geometry) %>%
-  sf::st_transform()
-sf::st_crs(new_shape) <- crs
+  sf::st_transform(proj4string = crs)
+#sf::st_crs(new_shape) <- crs
 
 strata_plot <- dplyr::full_join(new_shape, strata)
 
@@ -133,34 +135,26 @@ print(p1)
 
 ## Read in wind data
 ```{r, echo = TRUE}
-vwind <- raster::stack(here::here("data-raw/vwnd.10m.2021.nc"))
-```
-```{r, echo = TRUE}
-#vwind <- raster::crop(vwind, extent(280,300,30,50)) 
-# does not run in Rmarkdown???
-```
-```{r, echo = TRUE}
+
+# use ecopull function
+devtools::install_github("kimberly-bastille/ecopull")
+vwind <- ecopull::nc_to_raster(nc = here::here("data-raw/vwnd.10m.2021.nc"),
+                               varname = "vwnd",
+                               show_images = TRUE) 
+
 vwind <- raster::rotate(vwind)
-```
-```{r, echo = TRUE}
-raster::crs(vwind) <- "+proj=longlat +lat_1=35 +lat_2=45 +lat_0=40 +lon_0=-77 +x_0=0 +y_0=0 +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+raster::plot(vwind)
 ```
 
 ## Mask to relevant strata
 ```{r, echo = TRUE}
-## not sure why this mask isn't working??
-m_vwind <- raster::mask(vwind, new_shape[new_shape$STRATA > 2000 & new_shape$STRATA < 8000,2])
+m_vwind <- raster::mask(x = vwind, 
+                        mask = new_shape[new_shape$STRATA > 2000 & 
+                                           new_shape$STRATA < 8000,2])
 mean(m_vwind@data@values, na.rm = TRUE)
 m_vwind[[1]]
-#
-# uwind <- here::here("data-raw/uwnd.10m.2021.nc") %>%
-#   raster::stack()
 
-# something is wrong here
-vwind[[1]]
-
-# vwind_mask <- raster::mask(vwind, new_shape[new_shape$STRATA > 2000 & new_shape$STRATA < 8000,])
-# vwind_mean <- mean(vwind_mask@data@values, na.rm = TRUE)
+raster::plot(m_vwind)
 
 "names" <- NULL
 "values" <- NULL
