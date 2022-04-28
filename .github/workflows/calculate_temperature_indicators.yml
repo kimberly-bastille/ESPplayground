@@ -43,13 +43,14 @@ jobs:
           install.packages(c("ncdf4", "knitr", "usethis", "raster", "rgdal",
           "here", "devtools", "dplyr", "sf", "ggplot2", "reshape2", "stringr"))
           devtools::install_github("NOAA-EDAB/ecodata")
+          devtools::install_github("NOAA-EDAB/NEesp")
           devtools::install_github("kimberly-bastille/ecopull")'
 
       - name: Calculate indicators
         run: |
           Rscript -e '
           options(timeout = 60 * 60 * 6)
-          source(here::here("temperature.R"))'
+          try(source(here::here("temperature.R")))'
 
       - name: Check directory size
         run: |
