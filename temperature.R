@@ -17,7 +17,7 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
-years <- c(2020, 2021)
+years <- 1981:2021
 first <- c()
 last <- c()
 n_days <- c()
