@@ -6,6 +6,10 @@ crs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 mab <- NEesp::shape %>%
   dplyr::select(STRATA, geometry) %>%
   sf::st_transform(proj4string = crs) %>% 
+  # try geom fix?
+  dplyr::mutate(geometry = geometry %>% 
+                  s2::s2_rebuild() %>%
+                  sf::st_as_sfc()) %>%
   dplyr::summarise(geometry = sf::st_union(geometry)) %>%  
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
