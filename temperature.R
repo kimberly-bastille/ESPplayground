@@ -134,4 +134,4 @@ last
 n_days
 
 out_data <- tibble::tibble(years, first, last, n_days)
-write.csv(out_data, here::here("data-raw"))
+write.csv(out_data, here::here("data-raw/temperature_indicators.csv"))
