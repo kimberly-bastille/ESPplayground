@@ -3,6 +3,9 @@
 # shapefile setup
 crs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
+# different geom fix
+sf::sf_use_s2(FALSE)
+
 mab <- NEesp::shape %>%
   dplyr::select(STRATA, geometry) %>%
   sf::st_transform(proj4string = crs) %>% 
