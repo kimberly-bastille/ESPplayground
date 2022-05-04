@@ -17,7 +17,7 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
-years <- 1981:2021
+years <- 1982:2021
 first <- c()
 last <- c()
 n_days <- c()
@@ -38,10 +38,18 @@ for(j in years) {
   data <- raster::rotate(data)
   message("converted to raster...")
   
+  # make sure all days are there ----
+  
+  if(raster::nlayers(data) < 365) {
+    message(j, " does not have a full year of data! skipping!")
+  } else {
+  
   # crop to MAB ----
+  ndays <- raster::nlayers(data) # account for leap years
+  
   mab_temp <- raster::mask(x = data[[1:180]], 
                            mask = mab)
-  mab_temp2 <- raster::mask(x = data[[181:365]], 
+  mab_temp2 <- raster::mask(x = data[[181:ndays]], 
                             mask = mab)
   message("cropped to MAB...")
   
@@ -126,6 +134,7 @@ for(j in years) {
   
   n_days <- c(n_days, length(this_n_days$DOY))
   message("calculated proportion...")
+  }
   message(paste("done with", j))
 }
 
