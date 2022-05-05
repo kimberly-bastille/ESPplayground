@@ -22,7 +22,7 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-This is a proof-of-concept to illustrate the calculation of two temperature indicators for the bluefish ESP. 
+This is a proof-of-concept to illustrate the calculation of two temperature indicators for the bluefish ESP: first day above 18C and number of days above 18C. 
 
 # Shapefile setup
 ```{r}
