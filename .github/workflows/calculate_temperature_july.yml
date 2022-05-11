@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
 #  push:
 
-name: Calculate bluefish temperature indicators
+name: Calculate bluefish July temperature indicator
 
 jobs:
 
