@@ -1041,7 +1041,9 @@ dplyr::full_join(recruit, all_wind) %>%
   ggplot2::ggtitle("Both winds")
 ```
 
-Try GLMs
+##### Try GLMs
+
+Poisson:
 
 ```{r}
 dat <- dplyr::full_join(recruit, all_wind) %>%
@@ -1076,18 +1078,55 @@ mod_prediction <- exp(predict(mod1))
 lines(dat$Year, null_prediction, col = "gray")
 lines(dat$Year, mod_prediction, col = "red")
 
-MASS::stepAIC(mod1, direction = "backward")
-MASS::stepAIC(mod0, scope = list(upper = ~ crossshore_wind_April_North + crossshore_wind_May_North + 
-    crossshore_wind_April_South + crossshore_wind_May_South + 
-    longshore_wind_April_North + longshore_wind_May_North + longshore_wind_April_South + 
-    longshore_wind_May_South, 
-    lower = ~ 1), direction = "forward")
+# MASS::stepAIC(mod1, direction = "backward")
+# MASS::stepAIC(mod0, scope = list(upper = mod1$formula, 
+#     lower = ~ 1), direction = "forward")
 
 wind_indicators <- dat %>%
   dplyr::select(-Recruitment) %>%
   tidyr::pivot_longer(cols = colnames(dat)[3:10])
 
 write.csv(wind_indicators, "wind_indicators.csv")
+```
+
+Negative binomial:
+
+```{r}
+dat <- dplyr::full_join(recruit, all_wind) %>%
+  tidyr::drop_na(Recruitment, crossshore_wind, longshore_wind) %>%
+  dplyr::select(Year, region, Recruitment, month, longshore_wind, crossshore_wind) %>%
+  dplyr::filter(month == 4 | month == 5) %>%
+  dplyr::mutate(month = ifelse(month == 4, "April", "May")) %>%
+  tidyr::pivot_wider(names_from = c(month, region),
+                     values_from = c(crossshore_wind, longshore_wind)) %>%
+  tidyr::drop_na()
+
+eqn <- as.formula(paste("Recruitment ~", paste(colnames(dat)[3:10], collapse = " + ")))
+
+mod0 <- glmmTMB::glmmTMB(Recruitment ~ 1,
+                   data = dat,
+                   family = glmmTMB::nbinom2)
+
+mod1 <- glmmTMB::glmmTMB(eqn, 
+            data = dat, 
+            family = glmmTMB::nbinom2)
+
+summary(mod0)
+summary(mod1)
+AIC(mod0, mod1
+    ) %>% dplyr::arrange(AIC)
+
+plot(dat$Year, dat$Recruitment, type = "b")
+
+null_prediction <- exp(predict(mod0))
+mod_prediction <- exp(predict(mod1))
+
+lines(dat$Year, null_prediction, col = "gray")
+lines(dat$Year, mod_prediction, col = "red")
+
+# MASS::stepAIC(mod1, direction = "backward")
+# MASS::stepAIC(mod0, scope = list(upper = mod1$formula, 
+#     lower = ~ 1), direction = "forward")
 ```
 
 

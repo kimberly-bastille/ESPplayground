@@ -1,0 +1,950 @@
+---
+title: "Bluefish wind analysis"
+author: "Abigail Tyrell"
+date: "`r format(Sys.time(), '%d %b %Y')`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    toc_depth: 4
+    toc_float:
+      collapsed: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+`%>%` <- magrittr::`%>%`
+```
+
+# Introduction
+
+This wind analysis was inspired by Munch and Conover (2000), who found a correlation between wind speed and coastwide YOY index. The wind measurements used are described below: 
+
+> The NOAA environmental buoy array provided
+environmental data from 1970 to 1992. Buoys collected
+hourly records of windspeed and wind direction at a
+height of 10 m, and surface temperature at a depth of
+1.5 m. Data were examined from a total of 34 buoys in
+fixed locations throughout the region from Cape Fear to
+the Gulf of Maine and extending from nearshore
+to beyond the shelf break. Buoy locations are reported
+in Munch (1997).
+
+Spring-spawned YOY were apparently characterized as fish between 13-27cm in length in the autumn bottom trawl, but "A complete set of length-frequency distributions and cohort designations is presented in Munch (1997)".
+
+And the observed correlation is described:
+
+> A strong relationship existed between offshore wind
+and recruitment. Using north (n) and east (e) windstress components from NOAA buoys near the
+edge of the shelf of the Mid-Atlantic Bight, the
+model ln(c.p.u.e.) = -16.5 n - 12.8 e + 0.59 (p<0.05)
+explained 36% of the variance in spring cohort abundance in the SNE region
+
+I am trying to obtain a copy of Munch (1997), which is a master's thesis (Munch, S. B. 1997. Recruitment Dynamics of Bluefish, Pomatonus saltatrix, on the continental shelf from Cape Fear to
+Cape Cod, 1973–1995. M.S. Thesis. State University of New York at Stony Brook).
+
+# Determine relevant strata
+
+## What polygons to use?
+
+Entire east coast:
+
+```{r}
+# setup
+xmin <- -80
+xmax <- -65
+ymin <- 30
+ymax <- 45
+xlims <- c(xmin, xmax)
+ylims <- c(ymin, ymax)
+crs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+ne_countries <- rnaturalearth::ne_countries(
+  scale = 10,
+  continent = "North America",
+  returnclass = "sf"
+) %>%
+  sf::st_transform()
+
+ne_states <- rnaturalearth::ne_states(
+  country = "united states of america",
+  returnclass = "sf"
+) %>% sf::st_transform()
+
+
+# strata
+strata <- NEesp::latlong %>%
+  dplyr::select(strata) %>%
+  dplyr::distinct() %>%
+  dplyr::rename(STRATA = strata)
+
+new_shape <- NEesp::shape %>%
+  dplyr::select(STRATA, geometry) %>%
+  sf::st_transform(proj4string = crs)
+#sf::st_crs(new_shape) <- crs
+
+strata_plot <- dplyr::full_join(new_shape, strata)
+
+# plot
+p1 <- ggplot2::ggplot() +
+  ggplot2::geom_sf(
+    data = new_shape, # all survey strata
+    # fill = "aliceblue",
+    ggplot2::aes(fill = STRATA),
+    alpha = 0.9, 
+    size = 0.01, 
+    color = "grey30"
+  ) +
+  # ggplot2::geom_sf(data = strata_plot,
+  #     size = 0.05, color = "grey30") +
+  ggplot2::geom_sf(
+    data = ne_countries,
+    color = "grey60", 
+    size = 0.25
+  ) +
+  ggplot2::geom_sf(
+    data = ne_states,
+    color = "grey60", 
+    size = 0.05
+  ) +
+  viridis::scale_fill_viridis(discrete = FALSE) +
+  ggplot2::coord_sf(crs = crs, 
+                    xlim = xlims, 
+                    ylim = ylims) +
+  ggthemes::theme_map() +
+  ggplot2::theme(legend.direction = "horizontal")
+print(p1)
+```
+
+Inshore (ish) strata:
+
+```{r}
+p1 <- ggplot2::ggplot() +
+  ggplot2::geom_sf(
+    data = new_shape, # all survey strata
+    fill = "aliceblue",
+    #  ggplot2::aes(fill = STRATA),
+    alpha = 0.9, 
+    size = 0.01, 
+    color = "grey30"
+  ) +
+  ggplot2::geom_sf(
+    data = new_shape %>%
+      dplyr::filter(STRATA > 2000 & STRATA < 8000),
+    fill = "maroon",
+    size = 0.05, 
+    color = "grey30"
+  ) +
+  ggplot2::geom_sf(
+    data = ne_countries,
+    color = "grey60",
+    size = 0.25
+  ) +
+  ggplot2::geom_sf(
+    data = ne_states,
+    color = "grey60", 
+    size = 0.05
+  ) +
+  viridis::scale_fill_viridis(discrete = FALSE) +
+  ggplot2::coord_sf(crs = crs, 
+                    xlim = xlims, 
+                    ylim = ylims) +
+  ggthemes::theme_map()
+print(p1)
+```
+
+All strata south of ~ Cape Cod
+
+```{r}
+
+large_geom <- new_shape %>% 
+    dplyr::summarise(geometry = sf::st_union(geometry)) %>%
+  sf::st_crop(y = c(xmin = -80, xmax = -69, 
+                    ymax = 41.5, ymin = 32))
+
+p1 <- ggplot2::ggplot() +
+  ggplot2::geom_sf(
+    data = new_shape, # all survey strata
+    fill = "aliceblue",
+    #  ggplot2::aes(fill = STRATA),
+    alpha = 0.9, 
+    size = 0.01, 
+    color = "grey30"
+  ) +
+  ggplot2::geom_sf(
+    data = large_geom,
+    fill = "maroon",
+    size = 0.05, 
+    color = "grey30"
+  ) +
+  ggplot2::geom_sf(
+    data = ne_countries,
+    color = "grey60",
+    size = 0.25
+  ) +
+  ggplot2::geom_sf(
+    data = ne_states,
+    color = "grey60", 
+    size = 0.05
+  ) +
+  viridis::scale_fill_viridis(discrete = FALSE) +
+  ggplot2::coord_sf(crs = crs, 
+                    xlim = xlims, 
+                    ylim = ylims) +
+  ggthemes::theme_map()
+print(p1)
+```
+
+# Daily data
+
+## Downloaded daily mean dataset (uwind, vwind) from NOAA PSL
+Located in `data-raw` folder.
+
+## Extract mean wind by day
+
+### v wind
+
+#### Read in wind data
+```{r, echo = TRUE}
+
+# use ecopull function
+devtools::install_github("kimberly-bastille/ecopull")
+vwind <- ecopull::nc_to_raster(nc = here::here("data-raw/vwnd.10m.2021.nc"),
+                               varname = "vwnd",
+                               show_images = TRUE) 
+
+vwind <- raster::rotate(vwind)
+raster::plot(vwind)
+```
+
+#### Mask to relevant strata
+```{r, echo = TRUE}
+m_vwind <- raster::mask(x = vwind, 
+                        mask = new_shape[new_shape$STRATA > 2000 & 
+                                           new_shape$STRATA < 8000,2])
+mean(m_vwind@data@values, na.rm = TRUE)
+m_vwind[[1]]
+
+raster::plot(m_vwind)
+```
+
+##### Plot over map
+```{r}
+rast_df <- raster::as.data.frame(m_vwind, xy = TRUE)
+
+p1 +
+  ggplot2::geom_tile(data = rast_df[,1:3] %>%
+                       tidyr::drop_na(),
+                     ggplot2::aes(x = x,
+                                  y = y,
+                                  fill = X2021.01.01))
+```
+
+Seems like the existing strata are too small, try masking to more strata.
+
+#### Mask to different strata
+
+```{r, echo = TRUE}
+m_vwind2 <- raster::mask(x = vwind, 
+                        mask = large_geom)
+mean(m_vwind2@data@values, na.rm = TRUE)
+m_vwind2[[1]]
+
+raster::plot(m_vwind2)
+```
+
+##### Plot over map
+```{r}
+rast_df <- raster::as.data.frame(m_vwind2, xy = TRUE)
+
+p1 +
+  ggplot2::geom_tile(data = rast_df[,1:3] %>%
+                       tidyr::drop_na(),
+                     ggplot2::aes(x = x,
+                                  y = y,
+                                  fill = X2021.01.01)) +
+  ggplot2::theme(legend.direction = "horizontal")
+```
+
+This seems like a better geometry.
+
+### u wind
+
+#### Read in wind data
+```{r, echo = TRUE}
+
+# use ecopull function
+devtools::install_github("kimberly-bastille/ecopull")
+uwind <- ecopull::nc_to_raster(nc = here::here("data-raw/uwnd.10m.2021.nc"),
+                               varname = "uwnd",
+                               show_images = TRUE) 
+
+uwind <- raster::rotate(uwind)
+raster::plot(uwind)
+```
+
+#### Mask to strata
+
+```{r, echo = TRUE}
+m_uwind2 <- raster::mask(x = uwind, 
+                        mask = large_geom)
+mean(m_uwind2@data@values, na.rm = TRUE)
+m_uwind2[[1]]
+
+raster::plot(m_uwind2)
+```
+
+##### Plot over map
+```{r}
+rast_df <- raster::as.data.frame(m_uwind2, xy = TRUE)
+
+p1 +
+  ggplot2::geom_tile(data = rast_df[,1:3] %>%
+                       tidyr::drop_na(),
+                     ggplot2::aes(x = x,
+                                  y = y,
+                                  fill = X2021.01.01)) +
+  ggplot2::theme(legend.direction = "horizontal")
+```
+
+### Calculate weekly mean u and v wind
+
+#### v wind 
+
+Positive v wind = wind is blowing to the north
+
+```{r}
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:raster::nlayers(vwind)){
+  names <- vwind[[i]]@data@names
+  mean_wind <- mean(vwind[[i]]@data@values, na.rm = TRUE)
+  min_wind <- vwind[[i]]@data@min
+  max_wind <- vwind[[i]]@data@max
+  
+  dat<-cbind(names, mean_wind, min_wind, max_wind)
+  df<-rbind(df, dat)
+  }
+head(df)
+
+daily_wind <- df %>%
+  dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
+                                names = stringr::str_remove(names, pattern = "X"), 
+                                DOY = lubridate::as_date(names),
+                week = lubridate::week(DOY),
+                mean_wind = as.numeric(mean_wind),
+                min_wind = as.numeric(min_wind),
+                max_wind = as.numeric(max_wind))
+
+ggplot2::ggplot(daily_wind,
+                ggplot2::aes(x = DOY,
+                             y = mean_wind %>%
+                               as.numeric())) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Daily v wind")
+
+v_weekly <- daily_wind %>%
+  dplyr::group_by(week) %>%
+  dplyr::summarise(mean_wind_wk = mean(mean_wind %>% as.numeric(), na.rm = TRUE),
+                   mean_min = mean(min_wind %>% as.numeric(), na.rm = TRUE),
+                   mean_max = mean(max_wind %>% as.numeric(), na.rm = TRUE)) 
+
+v_weekly %>%
+  ggplot2::ggplot(ggplot2::aes(x = week,
+                             y = mean_wind_wk)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Weekly v wind")
+```
+
+#### u wind
+
+Positive u wind = wind is blowing to the east
+
+```{r}
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:raster::nlayers(uwind)){
+  names <- uwind[[i]]@data@names
+  mean_wind <- mean(uwind[[i]]@data@values, na.rm = TRUE)
+  min_wind <- uwind[[i]]@data@min
+  max_wind <- uwind[[i]]@data@max
+  
+  dat<-cbind(names, mean_wind, min_wind, max_wind)
+  df<-rbind(df, dat)
+  }
+head(df)
+
+daily_wind <- df %>%
+  dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
+                                names = stringr::str_remove(names, pattern = "X"), 
+                                DOY = lubridate::as_date(names),
+                week = lubridate::week(DOY))
+
+ggplot2::ggplot(daily_wind,
+                ggplot2::aes(x = DOY,
+                             y = mean_wind %>%
+                               as.numeric())) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Daily u wind")
+
+u_weekly <- daily_wind %>%
+  dplyr::group_by(week) %>%
+  dplyr::summarise(mean_wind_wk = mean(mean_wind %>% as.numeric(), na.rm = TRUE),
+                   mean_min = mean(min_wind %>% as.numeric(), na.rm = TRUE),
+                   mean_max = mean(max_wind %>% as.numeric(), na.rm = TRUE)) 
+
+u_weekly %>%
+  ggplot2::ggplot(ggplot2::aes(x = week,
+                             y = mean_wind_wk)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Weekly u wind")
+```
+
+## Calculate across and along shore winds by week
+
+Angles/directions are probably not reliable yet - have to ground truth
+
+```{r}
+colnames(v_weekly)[2:4] <- c("v_mean", "v_min", "v_max")
+colnames(u_weekly)[2:4] <- c("u_mean", "u_min", "u_max")
+
+total_wind <- dplyr::full_join(v_weekly, u_weekly) %>%
+  dplyr::mutate(v_mean = v_mean %>% round(digits = 3),
+                u_mean = u_mean %>% round(digits = 3),
+                wind_magnitude = sqrt(v_mean^2 + u_mean^2),
+                
+                ns = ifelse(v_mean > 0, "north", "south"),
+                ew = ifelse(u_mean > 0, "east", "west"),
+                wind_blowing_to = paste0(ns, ew),
+                
+                coarse_angle = atan(abs(v_mean/u_mean)),
+                coast_angle = (pi/4), # dummy value
+                
+                adjusted_angle = dplyr::case_when(
+                  wind_blowing_to == "northeast" ~ coarse_angle,
+                  wind_blowing_to == "northwest" ~ pi - coarse_angle,
+                  wind_blowing_to == "southwest" ~ pi + coarse_angle,
+                  wind_blowing_to == "southeast" ~ 2*pi - coarse_angle),
+                
+                new_angle = (adjusted_angle + (pi/2 - coast_angle)),
+                
+                new_angle = ifelse(new_angle > 2*pi, new_angle - 2*pi, new_angle),
+                
+                new_wind_blowing_to = dplyr::case_when(
+                  new_angle < 0 & new_angle > -pi/2 ~ "down_away",
+                  new_angle < 2*pi & new_angle > 3*pi/2 ~ "down_away",
+                  new_angle < 3*pi/2 & new_angle > pi ~ "down_towards",
+                  new_angle < pi & new_angle > pi/2 ~ "up_towards",
+                  new_angle > 0 & new_angle < pi/2 ~ "up_away"
+                ),
+                
+                # have to add sign back somehow
+                longshore_wind = (wind_magnitude / sqrt(tan(new_angle)^2 + 1)),
+                crossshore_wind = sqrt(wind_magnitude^2 - longshore_wind^2),
+                
+                longshore_wind = ifelse(stringr::str_detect(new_wind_blowing_to, "down"),
+                                        -longshore_wind, longshore_wind),
+                
+                crossshore_wind = ifelse(stringr::str_detect(new_wind_blowing_to, "towards"),
+                                        -crossshore_wind, crossshore_wind),
+                
+                check_magnitude = sqrt(longshore_wind^2 + crossshore_wind^2) == wind_magnitude
+                
+                # along = ifelse(new_angle > 0, "up_coast", "down_coast"),
+                # across = ifelse(abs(new_angle) < pi/2, "away_coast", "towards_coast"),
+                # wind_blowing_to2 = paste(along, across)
+                ) %>%
+  dplyr::select(-c(ns, ew, #along, across, 
+                   v_min, v_max, u_min, u_max))
+
+knitr::kable(head(total_wind),
+             digits = 3,
+             col.names = colnames(total_wind) %>%
+               stringr::str_replace_all("_", " "))
+```
+
+### Try plotting to see if things look correct
+
+```{r}
+ggplot2::ggplot(total_wind,
+                ggplot2::aes(x = 0,
+                             y = 0,
+                             yend = v_mean,
+                             xend = u_mean,
+                             color = wind_blowing_to)) +
+  ggplot2::geom_segment() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Standard directions")
+
+ggplot2::ggplot(total_wind,
+                ggplot2::aes(x = 0,
+                             y = 0,
+                             yend = v_mean,
+                             xend = u_mean,
+                             color = new_wind_blowing_to)) +
+  ggplot2::geom_segment() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Standard coordinates, labeled according to coastline")
+
+ggplot2::ggplot(total_wind,
+                ggplot2::aes(x = 0,
+                             y = 0,
+                             yend = longshore_wind,
+                             xend = crossshore_wind,
+                             color = new_wind_blowing_to)) +
+  ggplot2::geom_segment() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Rotated")
+```
+
+# Monthly data
+
+## Extract mean wind by month
+
+### v wind
+
+#### Read in wind data
+```{r, echo = TRUE}
+# use ecopull function
+vwind <- ecopull::nc_to_raster(nc = here::here("data-raw/vwnd.10m.mon.mean.nc"),
+                               varname = "vwnd",
+                               show_images = TRUE) 
+
+vwind <- raster::rotate(vwind)
+raster::plot(vwind)
+```
+
+#### Mask to relevant strata
+```{r, echo = TRUE}
+m_vwind <- raster::mask(x = vwind, 
+                        mask = large_geom)
+mean(m_vwind@data@values, na.rm = TRUE)
+m_vwind[[1]]
+
+raster::plot(m_vwind)
+```
+
+##### Plot over map
+```{r}
+rast_df <- raster::as.data.frame(m_vwind, xy = TRUE)
+
+p1 +
+  ggplot2::geom_tile(data = rast_df[,1:3] %>%
+                       tidyr::drop_na(),
+                     ggplot2::aes(x = x,
+                                  y = y,
+                                  fill = X1979.01.01))
+```
+
+### u wind
+
+#### Read in wind data
+```{r, echo = TRUE}
+# use ecopull function
+uwind <- ecopull::nc_to_raster(nc = here::here("data-raw/uwnd.10m.mon.mean.nc"),
+                               varname = "uwnd",
+                               show_images = TRUE) 
+
+uwind <- raster::rotate(uwind)
+raster::plot(uwind)
+```
+
+#### Mask to relevant strata
+```{r, echo = TRUE}
+m_uwind <- raster::mask(x = uwind, 
+                        mask = large_geom)
+mean(m_uwind@data@values, na.rm = TRUE)
+m_uwind[[1]]
+
+raster::plot(m_uwind)
+```
+
+##### Plot over map
+```{r}
+rast_df <- raster::as.data.frame(m_uwind, xy = TRUE)
+
+p1 +
+  ggplot2::geom_tile(data = rast_df[,1:3] %>%
+                       tidyr::drop_na(),
+                     ggplot2::aes(x = x,
+                                  y = y,
+                                  fill = X1979.01.01))
+```
+
+### Calculate monthly mean u and v wind
+
+#### v wind 
+
+Positive v wind = wind is blowing to the north
+
+```{r, fig.height = 8}
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:raster::nlayers(vwind)){
+  names <- vwind[[i]]@data@names
+  mean_wind <- mean(vwind[[i]]@data@values, na.rm = TRUE)
+  min_wind <- vwind[[i]]@data@min
+  max_wind <- vwind[[i]]@data@max
+  
+  dat<-cbind(names, mean_wind, min_wind, max_wind
+             )
+  df<-rbind(df, dat)
+  }
+head(df)
+
+monthly_wind <- df %>%
+  dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
+                                names = stringr::str_remove(names, pattern = "X"), 
+                                DOY = lubridate::as_date(names),
+                
+                week = lubridate::week(DOY),
+                month = lubridate::month(DOY),
+                year = lubridate::year(DOY),
+                
+                mean_wind = as.numeric(mean_wind),
+                min_wind = as.numeric(min_wind),
+                max_wind = as.numeric(max_wind))
+
+v_monthly_wind <- monthly_wind
+
+ggplot2::ggplot(monthly_wind,
+                ggplot2::aes(x = month,
+                             y = mean_wind %>%
+                               as.numeric(),
+                             color = as.factor(year)
+                             )) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_bw() +
+  #viridis::scale_color_viridis() +
+  ggplot2::ggtitle("Monthly v wind") +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+##### Test correlation with recruitment index from the 2019 assessment model
+```{r, fig.height = 16}
+recruit <- NEesp::asmt %>% 
+  dplyr::filter(Species == "Bluefish", 
+                Metric == "Recruitment", AssessmentYear == 2019) %>%
+  dplyr::select(Year, Value) %>%
+  dplyr::rename(Recruitment = Value) %>%
+  dplyr::mutate(Year = as.character(Year))
+
+dplyr::full_join(recruit, monthly_wind) %>%
+  tidyr::drop_na(Recruitment, mean_wind) %>%
+  ggplot2::ggplot(ggplot2::aes(x = mean_wind,
+                               y = Recruitment)) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  ggplot2::facet_grid(rows = ggplot2::vars(month)) +
+  ggplot2::theme_bw()
+```
+
+#### u wind
+
+Positive u wind = wind is blowing to the east
+
+```{r, fig.height = 8}
+"names" <- NULL
+"values" <- NULL
+df<- data.frame()
+for(i in 1:raster::nlayers(uwind)){
+  names <- uwind[[i]]@data@names
+  mean_wind <- mean(uwind[[i]]@data@values, na.rm = TRUE)
+  min_wind <- uwind[[i]]@data@min
+  max_wind <- uwind[[i]]@data@max
+  
+  dat<-cbind(names, mean_wind, min_wind, max_wind)
+  df<-rbind(df, dat)
+  }
+head(df)
+
+monthly_wind <- df %>%
+  dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
+                                names = stringr::str_remove(names, pattern = "X"), 
+                                DOY = lubridate::as_date(names),
+                week = lubridate::week(DOY),
+                month = lubridate::month(DOY),
+                year = lubridate::year(DOY))
+
+# plots
+
+u_monthly_wind <- monthly_wind
+
+ggplot2::ggplot(monthly_wind,
+                ggplot2::aes(x = month,
+                             y = mean_wind %>%
+                               as.numeric(),
+                             color = as.factor(year)
+                             )) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_bw() +
+  #viridis::scale_color_viridis() +
+  ggplot2::ggtitle("Monthly u wind") +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+##### Test correlation with recruitment index from the 2019 assessment model
+```{r, fig.height = 16}
+recruit <- NEesp::asmt %>% 
+  dplyr::filter(Species == "Bluefish", 
+                Metric == "Recruitment", AssessmentYear == 2019) %>%
+  dplyr::select(Year, Value) %>%
+  dplyr::rename(Recruitment = Value) %>%
+  dplyr::mutate(Year = as.character(Year))
+
+dplyr::full_join(recruit, monthly_wind) %>%
+  tidyr::drop_na(Recruitment, mean_wind) %>%
+  ggplot2::ggplot(ggplot2::aes(x = mean_wind %>% as.numeric(),
+                               y = Recruitment)) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  ggplot2::facet_grid(rows = ggplot2::vars(month)) +
+  ggplot2::theme_bw()
+```
+
+### Rotate
+
+#### Determine rotation angle
+```{r}
+p1 +
+  ggplot2::geom_segment(ggplot2::aes(x = -80,
+                             y = 30,
+                             yend = 45,
+                             xend = -65),
+                        color = "blue",
+                        lwd = 3)
+```
+
+Angle from north: `r pi/2 - atan((45 - 30) / (80 - 65))` (pi / 4)
+
+#### Do the rotation
+
+```{r}
+# combine u and v winds
+all_wind <- dplyr::full_join(u_monthly_wind %>%
+                    dplyr::rename(u_mean = mean_wind) %>%
+                      dplyr::select(-c(min_wind, max_wind, year)),
+                  v_monthly_wind %>%
+                    dplyr::rename(v_mean = mean_wind) %>%
+                      dplyr::select(-c(min_wind, max_wind, year))
+                  ) %>%
+  dplyr::mutate(v_mean = v_mean %>% as.numeric() %>% round(digits = 3),
+                u_mean = u_mean %>% as.numeric() %>% round(digits = 3),
+                wind_magnitude = sqrt(v_mean^2 + u_mean^2),
+                
+                ns = ifelse(v_mean > 0, "north", "south"),
+                ew = ifelse(u_mean > 0, "east", "west"),
+                wind_blowing_to = paste0(ns, ew),
+                
+                coarse_angle = atan(abs(v_mean/u_mean)),
+                coast_angle = (pi/4), 
+                
+                adjusted_angle = dplyr::case_when(
+                  wind_blowing_to == "northeast" ~ coarse_angle,
+                  wind_blowing_to == "northwest" ~ pi - coarse_angle,
+                  wind_blowing_to == "southwest" ~ pi + coarse_angle,
+                  wind_blowing_to == "southeast" ~ 2*pi - coarse_angle),
+                
+                new_angle = (adjusted_angle + (pi/2 - coast_angle)),
+                
+                new_angle = ifelse(new_angle > 2*pi, new_angle - 2*pi, new_angle),
+                
+                new_wind_blowing_to = dplyr::case_when(
+                  new_angle < 0 & new_angle > -pi/2 ~ "down_away",
+                  new_angle < 2*pi & new_angle > 3*pi/2 ~ "down_away",
+                  new_angle < 3*pi/2 & new_angle > pi ~ "down_towards",
+                  new_angle < pi & new_angle > pi/2 ~ "up_towards",
+                  new_angle > 0 & new_angle < pi/2 ~ "up_away"
+                ),
+                
+                # have to add sign back somehow
+                longshore_wind = (wind_magnitude / sqrt(tan(new_angle)^2 + 1)),
+                crossshore_wind = sqrt(wind_magnitude^2 - longshore_wind^2),
+                
+                longshore_wind = ifelse(stringr::str_detect(new_wind_blowing_to, "down"),
+                                        -longshore_wind, longshore_wind),
+                
+                crossshore_wind = ifelse(stringr::str_detect(new_wind_blowing_to, "towards"),
+                                        -crossshore_wind, crossshore_wind),
+                
+                check_magnitude = sqrt(longshore_wind^2 + crossshore_wind^2) == wind_magnitude
+                
+                # along = ifelse(new_angle > 0, "up_coast", "down_coast"),
+                # across = ifelse(abs(new_angle) < pi/2, "away_coast", "towards_coast"),
+                # wind_blowing_to2 = paste(along, across)
+                ) 
+```
+
+```{r}
+knitr::kable(head(all_wind),
+             digits = 3,
+             col.names = colnames(all_wind) %>%
+               stringr::str_replace_all("_", " "))
+```
+
+Alongshore wind (positive = going up the coast)
+
+```{r, fig.height = 8}
+ggplot2::ggplot(all_wind,
+                ggplot2::aes(x = month,
+                             y = longshore_wind,
+                             color = as.factor(Year)
+                             )) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_bw() +
+  #viridis::scale_color_viridis() +
+  ggplot2::ggtitle("Monthly long-shore wind") +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+Across shore wind (positive = going away from the coast)
+
+```{r, fig.height = 8}
+ggplot2::ggplot(all_wind,
+                ggplot2::aes(x = month,
+                             y = crossshore_wind,
+                             color = as.factor(Year)
+                             )) +
+  ggplot2::geom_point() +
+  ggplot2::geom_line() +
+  ggplot2::theme_bw() +
+  #viridis::scale_color_viridis() +
+  ggplot2::ggtitle("Monthly cross-shore wind") +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+##### Test correlation with recruitment index from the 2019 assessment model
+```{r, fig.height = 16}
+recruit <- NEesp::asmt %>% 
+  dplyr::filter(Species == "Bluefish", 
+                Metric == "Recruitment", AssessmentYear == 2019) %>%
+  dplyr::select(Year, Value) %>%
+  dplyr::rename(Recruitment = Value) %>%
+  dplyr::mutate(Year = as.character(Year))
+
+dplyr::full_join(recruit, all_wind) %>%
+  tidyr::drop_na(Recruitment, longshore_wind) %>%
+  ggplot2::ggplot(ggplot2::aes(x = longshore_wind,
+                               y = Recruitment)) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  ggplot2::facet_grid(rows = ggplot2::vars(month)) +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Along shore wind")
+
+dplyr::full_join(recruit, all_wind) %>%
+  tidyr::drop_na(Recruitment, crossshore_wind) %>%
+  ggplot2::ggplot(ggplot2::aes(x = crossshore_wind ,
+                               y = Recruitment)) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  ggplot2::facet_grid(rows = ggplot2::vars(month)) +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Across shore wind")
+
+dplyr::full_join(recruit, all_wind) %>%
+  tidyr::drop_na(Recruitment, crossshore_wind, longshore_wind) %>%
+  ggplot2::ggplot(ggplot2::aes(x = crossshore_wind ,
+                               y = longshore_wind,
+                               color = log(Recruitment))) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  ggplot2::facet_grid(rows = ggplot2::vars(month)) +
+  ggplot2::theme_bw() +
+  viridis::scale_color_viridis() +
+  ggplot2::ggtitle("Both winds")
+```
+
+##### Try GLMs
+
+Poisson:
+
+```{r}
+dat <- dplyr::full_join(recruit, all_wind) %>%
+  tidyr::drop_na(Recruitment, crossshore_wind, longshore_wind) %>%
+  dplyr::select(Year, Recruitment, month, longshore_wind, crossshore_wind) %>%
+  dplyr::filter(month == 4 | month == 5) %>%
+  dplyr::mutate(month = ifelse(month == 4, "April", "May")) %>%
+  tidyr::pivot_wider(names_from = c(month),
+                     values_from = c(crossshore_wind, longshore_wind)) %>%
+  tidyr::drop_na()
+
+eqn <- as.formula(paste("Recruitment ~", paste(colnames(dat)[3:6], collapse = " + ")))
+
+mod0 <- glm(Recruitment ~ 1, 
+            data = dat, 
+            family = "poisson")
+
+mod1 <- glm(eqn, 
+            data = dat, 
+            family = "poisson")
+
+summary(mod0)
+summary(mod1)
+AIC(mod0, mod1
+    ) %>% dplyr::arrange(AIC)
+
+plot(dat$Year, dat$Recruitment, type = "b")
+
+null_prediction <- exp(predict(mod0))
+mod_prediction <- exp(predict(mod1))
+
+lines(dat$Year, null_prediction, col = "gray")
+lines(dat$Year, mod_prediction, col = "red")
+
+# MASS::stepAIC(mod1, direction = "backward")
+# MASS::stepAIC(mod0, scope = list(upper = mod1$formula, direction = "forward"))
+
+wind_indicators <- dat %>%
+  dplyr::select(-Recruitment) %>%
+  tidyr::pivot_longer(cols = colnames(dat)[3:6])
+
+write.csv(wind_indicators, "wind_indicators_coastwide.csv")
+```
+
+Negative binomial:
+
+```{r}
+mod0 <- glmmTMB::glmmTMB(Recruitment ~ 1,
+                   data = dat,
+                   family = glmmTMB::nbinom2)
+
+mod1 <- glmmTMB::glmmTMB(eqn, 
+            data = dat, 
+            family = glmmTMB::nbinom2)
+
+summary(mod0)
+summary(mod1)
+AIC(mod0, mod1
+    ) %>% dplyr::arrange(AIC)
+
+plot(dat$Year, dat$Recruitment, type = "b")
+
+null_prediction <- exp(predict(mod0))
+mod_prediction <- exp(predict(mod1))
+
+lines(dat$Year, null_prediction, col = "gray")
+lines(dat$Year, mod_prediction, col = "red")
+
+# MASS::stepAIC(mod1, direction = "backward")
+# MASS::stepAIC(mod0, scope = list(upper = mod1$formula, direction = "forward"))
+```
+
