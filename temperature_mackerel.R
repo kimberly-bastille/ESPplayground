@@ -17,7 +17,7 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
-years <- 1970:2021
+years <- 1981:2021
 prop_spring <- c()
 
 for(j in years) {
