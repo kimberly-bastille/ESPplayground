@@ -26,11 +26,11 @@ for(j in years) {
   dir.create(here::here("data-raw","gridded", "sst_data"), recursive = TRUE)
   url <- paste0("https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2.highres/sst.day.mean.", j, ".v2.nc")
   download.file(url, destfile = "test.nc")
-  
+  # 
   # R can't open the file (will have to do this in a gh action...)
   # download file manually for testing on desktop
   
-  # name <- paste0(j, ".nc")
+   # name <- paste0(j, ".nc")
   name <- "test.nc"
   
   data <- ecopull::nc_to_raster(nc = name, varname = 'sst')
@@ -57,6 +57,8 @@ for(j in years) {
   rast_mab_df2 <- raster::as.data.frame(mab_temp2, xy = TRUE)
   message("created data frames...")
   
+  # could cut down number of days here to reduce calculation time
+  
   # calculate proportion above 22C by day ----
   names <- c()
   value <- c()
@@ -65,8 +67,11 @@ for(j in years) {
       tibble::as_tibble() %>%
       tidyr::drop_na()
     names[i-2] <- colnames(rast_mab_df[i])
+    # need to change this???
     value[i-2] <- nrow(new_dat %>% dplyr::filter(value > 12 & value < 16)) / nrow(new_dat)
-  }
+  # longitude vs distance changes in the north vs south
+    # have to adjust to account for weighting different lat/long differently
+    }
   mab_prop <- tibble::tibble(names, value, region = "MAB_SNE")
   
   names <- c()
@@ -80,6 +85,10 @@ for(j in years) {
   }
   mab_prop2 <- tibble::tibble(names, value, region = "MAB_SNE")
   
+  print(mab_prop)
+  print(mab_prop2)
+  
+  # maybe use dplyr::bind_rows?
   mab_prop <- rbind(mab_prop, mab_prop2) %>%
     dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
                   names = stringr::str_remove(names, pattern = "X"), 
