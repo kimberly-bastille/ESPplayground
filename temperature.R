@@ -34,8 +34,8 @@ for(j in years) {
   # R can't open the file (will have to do this in a gh action...)
   # download file manually for testing on desktop
   
-   name <- paste0(j, ".nc")
-  #name <- "test.nc"
+   # name <- paste0(j, ".nc")
+  name <- "test.nc"
   
   data <- ecopull::nc_to_raster(nc = name, varname = 'sst')
   data <- raster::rotate(data)
