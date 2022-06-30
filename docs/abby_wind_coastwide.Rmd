@@ -630,6 +630,8 @@ ggplot2::ggplot(monthly_wind,
                              )) +
   ggplot2::geom_point() +
   ggplot2::geom_line() +
+  ggplot2::stat_smooth(method = "loess",
+                       ggplot2::aes(group = 1)) +
   ggplot2::theme_bw() +
   #viridis::scale_color_viridis() +
   ggplot2::ggtitle("Monthly v wind") +
@@ -694,6 +696,8 @@ ggplot2::ggplot(monthly_wind,
                              )) +
   ggplot2::geom_point() +
   ggplot2::geom_line() +
+    ggplot2::stat_smooth(method = "loess",
+                       ggplot2::aes(group = 1)) +
   ggplot2::theme_bw() +
   #viridis::scale_color_viridis() +
   ggplot2::ggtitle("Monthly u wind") +
@@ -799,7 +803,7 @@ knitr::kable(head(all_wind),
                stringr::str_replace_all("_", " "))
 ```
 
-Alongshore wind (positive = going up the coast)
+#### Alongshore wind (positive = going up the coast)
 
 ```{r, fig.height = 8}
 ggplot2::ggplot(all_wind,
@@ -809,13 +813,15 @@ ggplot2::ggplot(all_wind,
                              )) +
   ggplot2::geom_point() +
   ggplot2::geom_line() +
+  ggplot2::stat_smooth(method = "loess",
+                       ggplot2::aes(group = 1)) +
   ggplot2::theme_bw() +
   #viridis::scale_color_viridis() +
   ggplot2::ggtitle("Monthly long-shore wind") +
   ggplot2::theme(legend.position = "bottom")
 ```
 
-Across shore wind (positive = going away from the coast)
+#### Across shore wind (positive = going away from the coast)
 
 ```{r, fig.height = 8}
 ggplot2::ggplot(all_wind,
@@ -825,13 +831,15 @@ ggplot2::ggplot(all_wind,
                              )) +
   ggplot2::geom_point() +
   ggplot2::geom_line() +
+  ggplot2::stat_smooth(method = "loess",
+                       ggplot2::aes(group = 1)) +
   ggplot2::theme_bw() +
   #viridis::scale_color_viridis() +
   ggplot2::ggtitle("Monthly cross-shore wind") +
   ggplot2::theme(legend.position = "bottom")
 ```
 
-##### Test correlation with recruitment index from the 2019 assessment model
+#### Test correlation with recruitment index from the 2019 assessment model
 ```{r, fig.height = 16}
 recruit <- NEesp::asmt %>% 
   dplyr::filter(Species == "Bluefish", 
@@ -868,6 +876,51 @@ dplyr::full_join(recruit, all_wind) %>%
   ggplot2::geom_line() +
   ggplot2::geom_point() +
   ggplot2::facet_grid(rows = ggplot2::vars(month)) +
+  ggplot2::theme_bw() +
+  viridis::scale_color_viridis() +
+  ggplot2::ggtitle("Both winds")
+```
+
+##### Combined April & May winds
+```{r, fig.height = 16}
+recruit <- NEesp::asmt %>% 
+  dplyr::filter(Species == "Bluefish", 
+                Metric == "Recruitment", AssessmentYear == 2019) %>%
+  dplyr::select(Year, Value) %>%
+  dplyr::rename(Recruitment = Value) %>%
+  dplyr::mutate(Year = as.character(Year))
+
+apr_may_wind <- all_wind %>%
+  dplyr::filter(month == 4 | month == 5) %>%
+  dplyr::group_by(Year) %>%
+  dplyr::summarise(mean_longshore = mean(longshore_wind),
+                   mean_crossshore = mean(crossshore_wind))
+
+dplyr::full_join(recruit, apr_may_wind) %>%
+  tidyr::drop_na(Recruitment, mean_longshore) %>%
+  ggplot2::ggplot(ggplot2::aes(x = mean_longshore,
+                               y = Recruitment)) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Along shore wind")
+
+dplyr::full_join(recruit, apr_may_wind) %>%
+  tidyr::drop_na(Recruitment, mean_crossshore) %>%
+  ggplot2::ggplot(ggplot2::aes(x = mean_crossshore ,
+                               y = Recruitment)) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("Across shore wind")
+
+dplyr::full_join(recruit, apr_may_wind) %>%
+  tidyr::drop_na(Recruitment, mean_crossshore, mean_longshore) %>%
+  ggplot2::ggplot(ggplot2::aes(x = mean_crossshore ,
+                               y = mean_longshore,
+                               color = log(Recruitment))) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point() +
   ggplot2::theme_bw() +
   viridis::scale_color_viridis() +
   ggplot2::ggtitle("Both winds")
@@ -917,7 +970,7 @@ wind_indicators <- dat %>%
   dplyr::select(-Recruitment) %>%
   tidyr::pivot_longer(cols = colnames(dat)[3:6])
 
-write.csv(wind_indicators, "wind_indicators_coastwide.csv")
+write.csv(wind_indicators, here::here("data-raw/wind_indicators_coastwide.csv"))
 ```
 
 Negative binomial:

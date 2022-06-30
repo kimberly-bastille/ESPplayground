@@ -2,13 +2,15 @@
 
 # shapefile setup
 crs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+# equal area crs
+new_crs <- "+proj=utm +zone=12 +datum=NAD83 +no_defs +ellps=GRS80"
 
 # different geom fix
 sf::sf_use_s2(FALSE)
 
 mab <- NEesp::shape %>%
   dplyr::select(STRATA, geometry) %>%
-  sf::st_transform(proj4string = crs) %>% 
+  sf::st_transform(proj4string = new_crs) %>% 
   # try geom fix?
   # dplyr::mutate(geometry = geometry %>% 
   #                 s2::s2_rebuild() %>%
@@ -33,7 +35,7 @@ for(j in years) {
    # name <- paste0(j, ".nc")
   name <- "test.nc"
   
-  data <- ecopull::nc_to_raster(nc = name, varname = 'sst')
+  data <- ecopull::nc_to_raster(nc = name, varname = 'sst') # converts to NAD83
   data <- raster::rotate(data)
   message("converted to raster...")
   

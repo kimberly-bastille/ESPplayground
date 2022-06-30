@@ -1086,7 +1086,7 @@ wind_indicators <- dat %>%
   dplyr::select(-Recruitment) %>%
   tidyr::pivot_longer(cols = colnames(dat)[3:10])
 
-write.csv(wind_indicators, "wind_indicators.csv")
+write.csv(wind_indicators, here::here("data-raw/wind_indicators.csv"))
 ```
 
 Negative binomial:
