@@ -59,7 +59,7 @@ for(j in years) {
   
   # could cut down number of days here to reduce calculation time
   
-  # calculate proportion above 22C by day ----
+  # calculate proportion between 12-16C by day ----
   names <- c()
   value <- c()
   for(i in 3:ncol(rast_mab_df)){
@@ -89,7 +89,7 @@ for(j in years) {
   print(mab_prop2)
   
   # maybe use dplyr::bind_rows?
-  mab_prop <- rbind(mab_prop, mab_prop2) %>%
+  mab_prop <- dplyr::full_join(mab_prop, mab_prop2) %>%
     dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
                   names = stringr::str_remove(names, pattern = "X"), 
                   DOY = lubridate::as_date(names),
@@ -97,9 +97,13 @@ for(j in years) {
                   month = lubridate::month(DOY),
                   value = as.numeric(value))
   
+  print(mab_prop)
+  
   this_prop <- mab_prop %>%
     dplyr::filter(month == 5 | month == 6) %>%
     dplyr::arrange(DOY)
+  
+  print(this_prop)
   
   prop_spring <- c(prop_spring, mean(this_prop$value))
   message("calculated proportion...")
@@ -107,7 +111,7 @@ for(j in years) {
   message(paste("done with", j))
 }
 
-prop_spring
+print(prop_spring)
 
 out_data <- tibble::tibble(years, prop_spring)
 write.csv(out_data, here::here("data-raw/temperature_mackerel.csv"))
