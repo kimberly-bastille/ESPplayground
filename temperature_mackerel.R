@@ -3,12 +3,15 @@
 # shapefile setup
 crs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
+# equal area crs
+new_crs <- "+proj=utm +zone=12 +datum=NAD83 +no_defs +ellps=GRS80"
+
 # different geom fix
 sf::sf_use_s2(FALSE)
 
 mab <- NEesp::shape %>%
   dplyr::select(STRATA, geometry) %>%
-  sf::st_transform(proj4string = crs) %>% 
+  sf::st_transform(proj4string = new_crs) %>% 
   # try geom fix?
   # dplyr::mutate(geometry = geometry %>% 
   #                 s2::s2_rebuild() %>%
@@ -17,7 +20,7 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
-years <- 1981:2021
+years <- 1982:2021
 prop_spring <- c()
 
 for(j in years) {
@@ -33,7 +36,7 @@ for(j in years) {
    # name <- paste0(j, ".nc")
   name <- "test.nc"
   
-  data <- ecopull::nc_to_raster(nc = name, varname = 'sst')
+  data <- ecopull::nc_to_raster(nc = name, varname = 'sst') # converts to NAD83
   data <- raster::rotate(data)
   message("converted to raster...")
   
@@ -44,20 +47,22 @@ for(j in years) {
   } else {
   
   # crop to MAB ----
+    
+    # filter to just may and june
+    months <- c(paste0("X", j, ".05.0", 1:9),
+                paste0("X", j, ".05.", 10:31),
+                paste0("X", j, ".06.0", 1:9),
+                paste0("X", j, ".06.", 10:30))
+    
   ndays <- raster::nlayers(data) # account for leap years
   
-  mab_temp <- raster::mask(x = data[[1:180]], 
+  mab_temp <- raster::mask(x = data[[months]], 
                            mask = mab)
-  mab_temp2 <- raster::mask(x = data[[181:ndays]], 
-                            mask = mab)
   message("cropped to MAB...")
   
   # create dataframes ----
   rast_mab_df <- raster::as.data.frame(mab_temp, xy = TRUE)
-  rast_mab_df2 <- raster::as.data.frame(mab_temp2, xy = TRUE)
   message("created data frames...")
-  
-  # could cut down number of days here to reduce calculation time
   
   # calculate proportion between 12-16C by day ----
   names <- c()
@@ -67,29 +72,14 @@ for(j in years) {
       tibble::as_tibble() %>%
       tidyr::drop_na()
     names[i-2] <- colnames(rast_mab_df[i])
-    # need to change this???
     value[i-2] <- nrow(new_dat %>% dplyr::filter(value > 12 & value < 16)) / nrow(new_dat)
-  # longitude vs distance changes in the north vs south
-    # have to adjust to account for weighting different lat/long differently
     }
-  mab_prop <- tibble::tibble(names, value, region = "MAB_SNE")
-  
-  names <- c()
-  value <- c()
-  for(i in 3:ncol(rast_mab_df2)){
-    new_dat <- rast_mab_df2[,i] %>%
-      tibble::as_tibble() %>%
-      tidyr::drop_na()
-    names[i-2] <- colnames(rast_mab_df2[i])
-    value[i-2] <- nrow(new_dat %>% dplyr::filter(value > 12 & value < 16)) / nrow(new_dat)
-  }
-  mab_prop2 <- tibble::tibble(names, value, region = "MAB_SNE")
-  
+  mab_prop <- tibble::tibble(names, value)
+
   print(mab_prop)
-  print(mab_prop2)
   
   # maybe use dplyr::bind_rows?
-  mab_prop <- dplyr::full_join(mab_prop, mab_prop2) %>%
+  mab_prop <- mab_prop %>%
     dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
                   names = stringr::str_remove(names, pattern = "X"), 
                   DOY = lubridate::as_date(names),
@@ -99,9 +89,7 @@ for(j in years) {
   
   print(mab_prop)
   
-  this_prop <- mab_prop %>%
-    dplyr::filter(month == 5 | month == 6) %>%
-    dplyr::arrange(DOY)
+  this_prop <- mab_prop
   
   print(this_prop)
   
