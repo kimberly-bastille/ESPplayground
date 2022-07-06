@@ -22,6 +22,7 @@ mab <- NEesp::shape %>%
 
 years <- 1982:2021
 prop_spring <- c()
+area_days_spring <- c()
 
 for(j in years) {
   message(paste("starting", j))
@@ -54,8 +55,6 @@ for(j in years) {
                 paste0("X", j, ".06.0", 1:9),
                 paste0("X", j, ".06.", 10:30))
     
-  ndays <- raster::nlayers(data) # account for leap years
-  
   mab_temp <- raster::mask(x = data[[months]], 
                            mask = mab)
   message("cropped to MAB...")
@@ -65,41 +64,37 @@ for(j in years) {
   message("created data frames...")
   
   # calculate proportion between 12-16C by day ----
-  names <- c()
-  value <- c()
-  for(i in 3:ncol(rast_mab_df)){
-    new_dat <- rast_mab_df[,i] %>%
-      tibble::as_tibble() %>%
-      tidyr::drop_na()
-    names[i-2] <- colnames(rast_mab_df[i])
-    value[i-2] <- nrow(new_dat %>% dplyr::filter(value > 12 & value < 16)) / nrow(new_dat)
-    }
-  mab_prop <- tibble::tibble(names, value)
+  
+  # calculate total area ----
+  total_area <- raster::area(mab_temp, na.rm = TRUE) %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y)) %>%
+    colSums(na.rm = TRUE)
+  
+  # calculate area between 12-16C ----
+  opt_mab_temp <- mab_temp
+  opt_mab_temp@data@values[which(mab_temp@data@values > 16)] <- NA
+  opt_mab_temp@data@values[which(mab_temp@data@values < 12)] <- NA
 
-  print(mab_prop)
+ optimal_area <- raster::area(opt_mab_temp, na.rm = TRUE) %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y)) %>%
+    colSums(na.rm = TRUE)
+ 
+ this_dat <- tibble::tibble(Year = j,
+                            mean_total_area = mean(total_area),
+                            mean_optimal_area = mean(optimal_area),
+                            sum_optimal_area = sum(optimal_area),
+                            proportion_optimal = mean_optimal_area/mean_total_area)
+
+  message("calculated indicators...")
   
-  # maybe use dplyr::bind_rows?
-  mab_prop <- mab_prop %>%
-    dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
-                  names = stringr::str_remove(names, pattern = "X"), 
-                  DOY = lubridate::as_date(names),
-                  week = lubridate::week(DOY),
-                  month = lubridate::month(DOY),
-                  value = as.numeric(value))
-  
-  print(mab_prop)
-  
-  this_prop <- mab_prop
-  
-  print(this_prop)
-  
-  prop_spring <- c(prop_spring, mean(this_prop$value))
-  message("calculated proportion...")
+  area_days_spring <- dplyr::full_join(area_days_spring, this_dat)
   }
   message(paste("done with", j))
 }
 
-print(prop_spring)
+print(area_days_spring)
 
-out_data <- tibble::tibble(years, prop_spring)
+out_data <- tibble::tibble(area_days_spring)
 write.csv(out_data, here::here("data-raw/temperature_mackerel.csv"))
