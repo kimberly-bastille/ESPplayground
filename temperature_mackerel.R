@@ -89,7 +89,7 @@ for(j in years) {
 
   message("calculated indicators...")
   
-  area_days_spring <- dplyr::full_join(area_days_spring, this_dat)
+  area_days_spring <- rbind(area_days_spring, this_dat)
   }
   message(paste("done with", j))
 }
