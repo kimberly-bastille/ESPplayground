@@ -7,7 +7,7 @@ crs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 new_crs <- "+proj=utm +zone=12 +datum=NAD83 +no_defs +ellps=GRS80"
 
 # different geom fix
-#sf::sf_use_s2(FALSE)
+sf::sf_use_s2(FALSE)
 
 mab <- NEesp::shape %>%
   dplyr::select(STRATA, geometry) %>%
@@ -61,48 +61,92 @@ for(j in years) {
   # mab_temp <- raster::projectRaster(mab_temp, crs = new_crs)
   # mab_temp2 <- raster::projectRaster(mab_temp2, crs = new_crs)
   
+  # calculate total area ----
+  raster_areas <- raster::area(mab_temp, na.rm = TRUE) %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y))
+  raster_areas2 <- raster::area(mab_temp2, na.rm = TRUE) %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y))
+  
+  total_area <- raster_areas %>%
+    colSums(na.rm = TRUE) %>%
+    unique() # always the same
+  
+  temps_df <- mab_temp %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y))
+  temps_df2 <- mab_temp2 %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y))
+  
+  # calculate weighted mean temp
+  weighted_mean_temp <- (temps_df * raster_areas / total_area) %>%
+    colSums(na.rm = TRUE)
+  weighted_mean_temp2 <- (temps_df2 * raster_areas2 / total_area) %>%
+    colSums(na.rm = TRUE)
+  
+  
+  # calculate area above 18C ----
+  mab_temp@data@values[which(mab_temp@data@values < 18)] <- NA
+  mab_temp2@data@values[which(mab_temp2@data@values < 18)] <- NA
+  
+  warm_area <- raster::area(mab_temp, na.rm = TRUE) %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y)) %>%
+    colSums(na.rm = TRUE)
+  warm_area2 <- raster::area(mab_temp2, na.rm = TRUE) %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y)) %>%
+    colSums(na.rm = TRUE)
+  
+  area_data <- tibble::tibble(names = c(names(weighted_mean_temp), names(weighted_mean_temp2)),
+                              warm_prop = c(warm_area, warm_area2)/total_area,
+                              mean_temp = c(weighted_mean_temp, weighted_mean_temp2)
+                              )
+  
   # create dataframes ----
-  rast_mab_df <- raster::as.data.frame(mab_temp, xy = TRUE)
-  rast_mab_df2 <- raster::as.data.frame(mab_temp2, xy = TRUE)
-  message("created data frames...")
-
-  # calculate mean and proportion above 18C by day ----
-  names <- c()
-  prop <- c()
-  mean <- c()
-  for(i in 3:ncol(rast_mab_df)){
-    new_dat <- rast_mab_df[,i] %>%
-      tibble::as_tibble() %>%
-      tidyr::drop_na()
-    names[i-2] <- colnames(rast_mab_df[i])
-    prop[i-2] <- nrow(new_dat %>% dplyr::filter(value > 18)) / nrow(new_dat)
-    mean[i-2] <- mean(new_dat$value)
-  }
-  mab_prop <- tibble::tibble(names, prop, mean)
+  # rast_mab_df <- raster::as.data.frame(mab_temp, xy = TRUE)
+  # rast_mab_df2 <- raster::as.data.frame(mab_temp2, xy = TRUE)
+  # message("created data frames...")
+  # 
+  # # calculate mean and proportion above 18C by day ----
+  # names <- c()
+  # prop <- c()
+  # mean <- c()
+  # for(i in 3:ncol(rast_mab_df)){
+  #   new_dat <- rast_mab_df[,i] %>%
+  #     tibble::as_tibble() %>%
+  #     tidyr::drop_na()
+  #   names[i-2] <- colnames(rast_mab_df[i])
+  #   prop[i-2] <- nrow(new_dat %>% dplyr::filter(value > 18)) / nrow(new_dat)
+  #   mean[i-2] <- mean(new_dat$value)
+  # }
+  # mab_prop <- tibble::tibble(names, prop, mean)
+  # 
+  # names <- c()
+  # prop <- c()
+  # mean <- c()
+  # for(i in 3:ncol(rast_mab_df2)){
+  #   new_dat <- rast_mab_df2[,i] %>%
+  #     tibble::as_tibble() %>%
+  #     tidyr::drop_na()
+  #   names[i-2] <- colnames(rast_mab_df2[i])
+  #   prop[i-2] <- nrow(new_dat %>% dplyr::filter(value > 18)) / nrow(new_dat)
+  #   mean[i-2] <- mean(new_dat$value)
+  # }
+  # mab_prop2 <- tibble::tibble(names, prop, mean)
+  # 
+  # mab_prop <- dplyr::full_join(mab_prop, mab_prop2) %>%
   
-  names <- c()
-  prop <- c()
-  mean <- c()
-  for(i in 3:ncol(rast_mab_df2)){
-    new_dat <- rast_mab_df2[,i] %>%
-      tibble::as_tibble() %>%
-      tidyr::drop_na()
-    names[i-2] <- colnames(rast_mab_df2[i])
-    prop[i-2] <- nrow(new_dat %>% dplyr::filter(value > 18)) / nrow(new_dat)
-    mean[i-2] <- mean(new_dat$value)
-  }
-  mab_prop2 <- tibble::tibble(names, prop, mean)
-  
-  mab_prop <- dplyr::full_join(mab_prop, mab_prop2) %>%
+  mab_prop <- area_data %>%
     dplyr::mutate(Year = stringr::str_extract(names, pattern = "\\d{4}"), 
                   names = stringr::str_remove(names, pattern = "X"), 
-                  DOY = lubridate::as_date(names),
-                  week = lubridate::week(DOY),
-                  prop = as.numeric(prop))
+                  DOY = lubridate::as_date(names))
   
   # first and last days with mean temp > 18
   this_first <- mab_prop %>%
-    dplyr::filter(mean >= 18) %>%
+    dplyr::filter(mean_temp >= 18) %>%
     dplyr::arrange(DOY)
   
   first <- c(first, lubridate::yday(this_first$DOY[1]))
@@ -111,7 +155,7 @@ for(j in years) {
   
   # number of days with >=75% of area >18
   this_n_days <- mab_prop %>%
-    dplyr::filter(prop >= 0.75) %>%
+    dplyr::filter(warm_prop >= 0.75) %>%
     dplyr::arrange(DOY)
   
   n_days <- c(n_days, length(this_n_days$DOY))

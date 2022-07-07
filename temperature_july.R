@@ -63,7 +63,7 @@ for(j in years) {
     colSums(na.rm = TRUE)
   
   # calculate area above 22C ----
-  mab_temp[mab_temp[] < 22 ] <- NA
+  mab_temp@data@values[which(mab_temp@data@values < 22)] <- NA
   
   july_area <- raster::area(mab_temp, na.rm = TRUE) %>%
     raster::as.data.frame(xy = TRUE) %>%
