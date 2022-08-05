@@ -50,7 +50,7 @@ jobs:
         run: |
           Rscript -e '
           options(timeout = 60 * 60 * 6)
-          install.packages(c("readxl", "raster"))
+          install.packages(c("readxl", "terra", "raster"))
           try(source(here::here("temperature.R")))'
 
       - name: Check directory size
