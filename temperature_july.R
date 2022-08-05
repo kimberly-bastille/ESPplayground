@@ -19,6 +19,12 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
+bf_strata <- NEesp::shape %>%
+  dplyr::select(STRATA, geometry) %>%
+  dplyr::filter(STRATA %in% strata) %>%
+  sf::st_transform(proj4string = new_crs) %>% 
+  dplyr::summarise(geometry = sf::st_union(geometry))
+
 years <- 1982:2021
 prop_july <- c()
 
@@ -53,7 +59,8 @@ for(j in years) {
   # ndays <- raster::nlayers(data) # account for leap years
   
   mab_temp <- raster::mask(x = data[[july]], 
-                           mask = mab)
+                           mask = bf_strata # mab
+                           )
   message("cropped to July MAB...")
 
   # calculate total area ----
@@ -84,4 +91,4 @@ for(j in years) {
 prop_july
 
 out_data <- tibble::tibble(years, prop_july)
-write.csv(out_data, here::here("data-raw/temperature_july.csv"))
+write.csv(out_data, here::here("data-raw/temperature_july_bfstrata.csv"))

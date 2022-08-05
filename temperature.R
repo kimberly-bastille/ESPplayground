@@ -20,6 +20,18 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
+strata <- readxl::read_excel(here::here("data-raw/BLF_STRATA.xlsx"),
+                             skip = 3)
+colnames(strata) <- c("alb", "big")
+strata <- c(strata$alb, strata$big) %>%
+  unique() 
+
+bf_strata <- NEesp::shape %>%
+  dplyr::select(STRATA, geometry) %>%
+  dplyr::filter(STRATA %in% strata) %>%
+  sf::st_transform(proj4string = new_crs) %>% 
+  dplyr::summarise(geometry = sf::st_union(geometry))
+
 years <- 1982:2021
 first <- c()
 last <- c()
@@ -51,9 +63,11 @@ for(j in years) {
   ndays <- raster::nlayers(data) # account for leap years
   
   mab_temp <- raster::mask(x = data[[1:180]], 
-                           mask = mab)
+                           mask = bf_strata # mab
+                           )
   mab_temp2 <- raster::mask(x = data[[181:ndays]], 
-                            mask = mab)
+                            mask = bf_strata # mab
+                            )
   message("cropped to MAB...")
   # 
   # # reproject to equal area crs ----
@@ -71,7 +85,7 @@ for(j in years) {
   
   total_area <- raster_areas %>%
     colSums(na.rm = TRUE) %>%
-    unique() # always the same
+    unique() # always the same (should do earlier/simpler)
   
   temps_df <- mab_temp %>%
     raster::as.data.frame(xy = TRUE) %>%
@@ -169,4 +183,4 @@ last
 n_days
 
 out_data <- tibble::tibble(years, first, last, n_days)
-write.csv(out_data, here::here("data-raw/temperature_indicators.csv"))
+write.csv(out_data, here::here("data-raw/temperature_indicators_bfstrata.csv"))
