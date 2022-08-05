@@ -25,6 +25,7 @@ strata <- readxl::read_excel(here::here("data-raw/BLF_STRATA.xlsx"),
 colnames(strata) <- c("alb", "big")
 strata <- c(strata$alb, strata$big) %>%
   unique() 
+print(strata)
 
 bf_strata <- NEesp::shape %>%
   dplyr::select(STRATA, geometry) %>%
