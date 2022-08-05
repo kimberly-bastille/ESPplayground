@@ -50,6 +50,7 @@ jobs:
         run: |
           Rscript -e '
           options(timeout = 60 * 60 * 6)
+          install.packages("readxl")
           try(source(here::here("temperature.R")))'
 
       - name: Check directory size
