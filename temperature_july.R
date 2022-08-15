@@ -19,6 +19,13 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
+strata <- readxl::read_excel(here::here("data-raw/BLF_STRATA.xlsx"),
+                             skip = 3)
+colnames(strata) <- c("alb", "big")
+strata <- c(strata$alb, strata$big) %>%
+  unique() 
+print(strata)
+
 bf_strata <- NEesp::shape %>%
   dplyr::select(STRATA, geometry) %>%
   dplyr::filter(STRATA %in% strata) %>%
