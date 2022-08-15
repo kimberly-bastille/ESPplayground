@@ -69,8 +69,10 @@ for(j in years) {
     dplyr::select(-c(x, y)) %>%
     colSums(na.rm = TRUE)
   
-  # calculate area above 22C ----
+  # calculate area above 22-25.6C ----
   mab_temp@data@values[which(mab_temp@data@values < 22)] <- NA
+  # also remove areas that are too warm
+  # mab_temp@data@values[which(mab_temp@data@values > 25.6)] <- NA
   
   july_area <- raster::area(mab_temp, na.rm = TRUE) %>%
     raster::as.data.frame(xy = TRUE) %>%

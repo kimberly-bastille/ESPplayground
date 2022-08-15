@@ -51,6 +51,9 @@ jobs:
           Rscript -e '
           options(timeout = 60 * 60 * 6)
           install.packages("readxl")
+          install.packages("Rcpp")
+          install.packages("terra", repos="https://rspatial.r-universe.dev")
+          install.packages("raster")
           try(source(here::here("temperature_july.R")))'
 
       - name: Check directory size
