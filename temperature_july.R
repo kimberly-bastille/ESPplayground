@@ -34,6 +34,7 @@ bf_strata <- NEesp::shape %>%
 
 years <- 1982:2021
 prop_july <- c()
+prop_july_bf <- c()
 
 for(j in years) {
   message(paste("starting", j))
@@ -66,7 +67,7 @@ for(j in years) {
   # ndays <- raster::nlayers(data) # account for leap years
   
   mab_temp <- raster::mask(x = data[[july]], 
-                           mask = bf_strata # mab
+                           mask = mab
                            )
   message("cropped to July MAB...")
 
@@ -76,10 +77,10 @@ for(j in years) {
     dplyr::select(-c(x, y)) %>%
     colSums(na.rm = TRUE)
   
-  # calculate area above 22-25.6C ----
-  mab_temp@data@values[which(mab_temp@data@values < 22)] <- NA
+  # calculate area 18-25.6C ----
+  mab_temp@data@values[which(mab_temp@data@values < 18)] <- NA
   # also remove areas that are too warm
-  # mab_temp@data@values[which(mab_temp@data@values > 25.6)] <- NA
+  mab_temp@data@values[which(mab_temp@data@values > 25.6)] <- NA
   
   july_area <- raster::area(mab_temp, na.rm = TRUE) %>%
     raster::as.data.frame(xy = TRUE) %>%
@@ -92,12 +93,43 @@ for(j in years) {
   this_prop <- mean(props)
   
   prop_july <- c(prop_july, this_prop)
-  message("calculated proportion...")
+  message("calculated MAB proportion...")
+  
+  # crop to bluefish strata ----
+  
+  mab_temp <- raster::mask(x = data[[july]], 
+                           mask = bf_strata
+  )
+  message("cropped to July MAB...")
+  
+  # calculate total area ----
+  total_area <- raster::area(mab_temp, na.rm = TRUE) %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y)) %>%
+    colSums(na.rm = TRUE)
+  
+  # calculate area 18-25.6C ----
+  mab_temp@data@values[which(mab_temp@data@values < 18)] <- NA
+  # also remove areas that are too warm
+  mab_temp@data@values[which(mab_temp@data@values > 25.6)] <- NA
+  
+  july_area <- raster::area(mab_temp, na.rm = TRUE) %>%
+    raster::as.data.frame(xy = TRUE) %>%
+    dplyr::select(-c(x, y)) %>%
+    colSums(na.rm = TRUE)
+  
+  # calculate proportion ----
+  
+  props <- july_area/total_area
+  this_prop <- mean(props)
+  
+  prop_july_bf <- c(prop_july_bf, this_prop)
+  message("calculated bluefish strata proportion...")
   }
   message(paste("done with", j))
 }
 
-prop_july
+# prop_july
 
-out_data <- tibble::tibble(years, prop_july)
+out_data <- tibble::tibble(years, prop_july, prop_july_bf)
 write.csv(out_data, here::here("data-raw/temperature_july_bfstrata.csv"))
