@@ -89,7 +89,11 @@ for (j in years) {
           mean_temp = final_temp
         )
 
-        total_data <- dplyr::full_join(total_data, out_data)
+        if(nrow(total_data) == 0) {
+          total_data <- out_data
+        } else { 
+          total_data <- dplyr::full_join(total_data, out_data)
+        }
         message("calculated regional mean monthly temp...")
       }
     }
