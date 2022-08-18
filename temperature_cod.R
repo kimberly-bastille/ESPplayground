@@ -14,7 +14,7 @@ cod <- cod %>%
   sf::st_transform(proj4string = new_crs)
 
 years <- 1982:2021
-out_data <- tibble::tibble()
+total_data <- tibble::tibble()
 
 for (j in years) {
   message(paste("starting", j))
