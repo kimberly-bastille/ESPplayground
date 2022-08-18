@@ -39,12 +39,6 @@ for (j in years) {
     message(j, " does not have a full year of data! skipping!")
   } else {
 
-    # filter to just july
-    july <- c(
-      paste0("X", j, ".07.0", 1:9),
-      paste0("X", j, ".07.", 10:31)
-    )
-
     # crop to regions & calculate ----
 
     # loop over months ----
@@ -77,16 +71,28 @@ for (j in years) {
         total_area <- area %>%
           colSums(na.rm = TRUE)
 
+        # weighted mean temp
         weighted_temp <- (region_data@data@values * area) %>%
           colSums(na.rm = TRUE)
 
-        final_temp <- weighted_temp / total_area
+        final_temp <- mean(weighted_temp, na.rm = TRUE) / total_area
+        
+        # area under 11C
+        region_data@data@values[which(region_data@data@values > 11)] <- NA
+        
+        month_area <- raster::area(region_data, na.rm = TRUE) %>%
+          raster::as.data.frame(xy = TRUE) %>%
+          dplyr::select(-c(x, y)) %>%
+          colSums(na.rm = TRUE)
+        
+        final_area <- mean(month_area, na.rm = TRUE) / total_area
 
         out_data <- tibble::tibble(
           Year = j,
           Month = i,
           Region = k,
-          mean_temp = final_temp
+          mean_temp = final_temp,
+          mean_area = final_area
         )
 
         if(nrow(total_data) == 0) {
