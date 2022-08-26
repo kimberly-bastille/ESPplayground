@@ -102,9 +102,14 @@ for(j in years) {
     colSums(na.rm = TRUE)
   
   
-  # calculate area above 18C ----
+  # calculate area 18-25.6C ----
   mab_temp@data@values[which(mab_temp@data@values < 18)] <- NA
+  # also remove areas that are too warm
+  mab_temp@data@values[which(mab_temp@data@values > 25.6)] <- NA
+  
   mab_temp2@data@values[which(mab_temp2@data@values < 18)] <- NA
+  # also remove areas that are too warm
+  mab_temp2@data@values[which(mab_temp2@data@values > 25.6)] <- NA
   
   warm_area <- raster::area(mab_temp, na.rm = TRUE) %>%
     raster::as.data.frame(xy = TRUE) %>%
