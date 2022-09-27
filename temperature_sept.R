@@ -70,4 +70,6 @@ for(j in years) {
   message(paste("done with", j))
 }
 
-raster::writeRaster(temp_out, "data-raw/september_mean_temperature.grd")
+raster::writeRaster(temp_out, 
+                    "data-raw/september_mean_temperature.grd",
+                    overwrite = TRUE)
