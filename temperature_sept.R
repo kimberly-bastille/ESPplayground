@@ -21,7 +21,7 @@ north_atlantic <- NEesp::shape %>%
                     ymax = 50, ymin =  30))
 
 years <- 1982:2021
-temp_out <- NULL
+temp_out <- raster::stack()
 
 for(j in years) {
   message(paste("starting", j))
@@ -61,11 +61,7 @@ for(j in years) {
   mean_temp <- raster::calc(na_temp, mean)
   names(mean_temp) <- j
   
-  if(is.null(temp_out)) {
-    temp_out <- mean_temp
-  } else {
-        temp_out <- raster::stack(mean_temp, temp_out)
-  }
+  temp_out <- raster::stack(mean_temp, temp_out)
   }
   message(paste("done with", j))
 }
