@@ -61,7 +61,7 @@ for(j in years) {
   mean_temp <- raster::calc(na_temp, mean)
   names(mean_temp) <- j
   
-  temp_out <- raster::stack(mean_temp, temp_out)
+  temp_out <- raster::stack(list(mean_temp, temp_out))
   }
   message(paste("done with", j))
 }
