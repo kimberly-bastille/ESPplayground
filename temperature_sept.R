@@ -59,7 +59,7 @@ for(j in years) {
   # calculate mean temp for each location
   
   mean_temp <- raster::calc(na_temp, mean)
-  names(mean_temp) <- i
+  names(mean_temp) <- j
   
   if(is.null(temp_out)) {
     temp_out <- mean_temp

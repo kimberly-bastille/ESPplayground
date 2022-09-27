@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
 #  push:
 
-name: Calculate mackerel spring temperature indicator
+name: Calculate mean September temperature for VAST
 
 jobs:
 
