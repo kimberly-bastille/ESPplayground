@@ -21,7 +21,7 @@ north_atlantic <- NEesp::shape %>%
                     ymax = 50, ymin =  30))
 
 years <- 1982:2021
-temp_out <- raster::stack()
+dir.create(here::here("data-raw/september"))
 
 for(j in years) {
   message(paste("starting", j))
@@ -61,11 +61,15 @@ for(j in years) {
   mean_temp <- raster::calc(na_temp, mean)
   names(mean_temp) <- j
   
-  temp_out <- raster::stack(list(mean_temp, temp_out))
+  raster::writeRaster(mean_temp, 
+                      here::here("data-raw/september/", paste0(j, ".grd")),
+                      overwrite = TRUE)
   }
   message(paste("done with", j))
 }
 
+temp_out <- raster::stack(list.files(here::here("data-raw/september"),
+                                          pattern = ".grd"))
 raster::writeRaster(temp_out, 
                     "data-raw/september_mean_temperature.grd",
                     overwrite = TRUE)
