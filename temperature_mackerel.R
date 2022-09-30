@@ -20,11 +20,21 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
-gosl <- sf::st_read(here::here("data-raw/MackerelShapefiles/iho.shp"))
 
+# gulf of st lawrence shapefile downloaded from:
+# https://www.marineregions.org/gazetteer.php?p=details&id=4290
+gosl <- sf::st_read(here::here("data-raw/MackerelShapefiles/MackerelNAFO.shp"))
+
+# southern GOSL
 ggplot2::ggplot() +
-  ggplot2::geom_sf(data = gosl) +
+  ggplot2::geom_sf(data = gosl %>%
+                     dplyr::filter(Label == "4T"),
+                   ggplot2::aes(fill = Label)) +
+  viridis::scale_fill_viridis(discrete = TRUE) +
   ggplot2::theme_minimal()
+
+gosl <- gosl %>%
+  dplyr::filter(Label == "4T")
 
 years <- 1982:2021
 prop_spring <- c()
@@ -56,8 +66,14 @@ for(j in years) {
   # crop to MAB ----
     
     # filter to just may and june
-    months <- c(paste0("X", j, ".05.0", 1:9),
-                paste0("X", j, ".05.", 10:31),
+    # months <- c(paste0("X", j, ".05.0", 1:9),
+    #             paste0("X", j, ".05.", 10:31),
+    #             paste0("X", j, ".06.0", 1:9),
+    #             paste0("X", j, ".06.", 10:30))
+    
+    # filter to just june and july
+    months <- c(paste0("X", j, ".07.0", 1:9),
+                paste0("X", j, ".07.", 10:31),
                 paste0("X", j, ".06.0", 1:9),
                 paste0("X", j, ".06.", 10:30))
     
