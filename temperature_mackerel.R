@@ -20,6 +20,12 @@ mab <- NEesp::shape %>%
   sf::st_crop(y = c(xmin = -80, xmax = -69, 
                     ymax = 41.5, ymin =  35.8327))
 
+gosl <- sf::st_read(here::here("data-raw/MackerelShapefiles/iho.shp"))
+
+ggplot2::ggplot() +
+  ggplot2::geom_sf(data = gosl) +
+  ggplot2::theme_minimal()
+
 years <- 1982:2021
 prop_spring <- c()
 area_days_spring <- c()
@@ -55,9 +61,13 @@ for(j in years) {
                 paste0("X", j, ".06.0", 1:9),
                 paste0("X", j, ".06.", 10:30))
     
+  # mab_temp <- raster::mask(x = data[[months]], 
+  #                          mask = mab)
+  # message("cropped to MAB...")
+  
   mab_temp <- raster::mask(x = data[[months]], 
-                           mask = mab)
-  message("cropped to MAB...")
+                           mask = gosl)
+  message("cropped to Gulf of St Lawrence...")
   
   # create dataframes ----
   rast_mab_df <- raster::as.data.frame(mab_temp, xy = TRUE)
@@ -97,4 +107,4 @@ for(j in years) {
 print(area_days_spring)
 
 out_data <- tibble::tibble(area_days_spring)
-write.csv(out_data, here::here("data-raw/temperature_mackerel.csv"))
+write.csv(out_data, here::here("data-raw/temperature_mackerel_gosl.csv"))
