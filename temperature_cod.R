@@ -76,6 +76,7 @@ for (j in years) {
           colSums(na.rm = TRUE)
 
         final_temp <- mean(weighted_temp, na.rm = TRUE) / total_area
+        temp_sd <- sd(weighted_temp, na.rm = TRUE) / total_area
         
         # area under 11C
         region_data@data@values[which(region_data@data@values > 11)] <- NA
@@ -86,13 +87,16 @@ for (j in years) {
           colSums(na.rm = TRUE)
         
         final_area <- mean(month_area, na.rm = TRUE) / total_area
+        sd_area <- sd(month_area, na.rm = TRUE) / total_area
 
         out_data <- tibble::tibble(
           Year = j,
           Month = i,
           Region = k,
           mean_temp = final_temp,
-          mean_area = final_area
+          temp_sd = temp_sd,
+          mean_area = final_area,
+          sd_area = sd_area
         )
 
         if(nrow(total_data) == 0) {
