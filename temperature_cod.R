@@ -93,11 +93,10 @@ for (j in years) {
           Year = j,
           Month = i,
           Region = k,
-          mean_temp = final_temp,
-          temp_sd = temp_sd,
-          mean_area = final_area,
-          sd_area = sd_area
-        )
+          DATA_VALUE = c(final_temp[1], final_area[1]),
+          DATA_SD = c(temp_sd[1], sd_area[1]),
+          INDICATOR_NAME = c("temperature", "area")
+        ) 
 
         if(nrow(total_data) == 0) {
           total_data <- out_data
